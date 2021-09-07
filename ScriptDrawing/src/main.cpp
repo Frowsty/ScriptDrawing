@@ -73,27 +73,25 @@ public:
 
     olc::vi2d last_mouse_pos = olc::vi2d{ 0, 0 };
 
-    void pen_drawing()
+    // THANK YOU MEGAREV YET AGAIN!
+    void pen_drawing(int x1, int y1, int x2, int y2, int thickness, const olc::Pixel& color)
     {
-        if (GetMousePos().y > 0 && GetMousePos().y < 520)
-        {
-            if (GetMouse(0).bHeld)
-            {   
-                int dx = GetMouseX() - last_mouse_pos.x;
-                int dy = GetMouseY() - last_mouse_pos.y;
-                auto distance = std::max(std::abs(dx), std::abs(dy));
+        olc::vf2d direction = { (float)(x2 - x1), (float)(y2 - y1) };
+        olc::vf2d axis_proj = direction.perp();
+        float len = axis_proj.mag();
+        if (len > 0.001f) axis_proj /= len;
+        axis_proj *= thickness;
 
-                FillCircle(GetMousePos(), pencil_size, pencil_color);
+        olc::vi2d t1 = olc::vi2d(x1, y1) + axis_proj / 2;
+        olc::vi2d t2 = t1 - axis_proj;
+        olc::vi2d t3 = olc::vi2d(x2, y2) + axis_proj / 2;
+        olc::vi2d t4 = t3 - axis_proj;
 
-                for (int i = 0; i < distance; ++i)
-                {
-                    auto x = last_mouse_pos.x + float(i / distance * dx);
-                    auto y = last_mouse_pos.y + float(i / distance * dy);
-                    FillCircle(olc::vi2d(std::round(x), std::round(y)), pencil_size, pencil_color);
-                }
+        FillTriangle(t1.x, t1.y, t2.x, t2.y, t3.x, t3.y, color);
+        FillTriangle(t2.x, t2.y, t3.x, t3.y, t4.x, t4.y, color);
 
-            }
-        }
+        FillCircle(x1, y1, thickness / 2, color);
+        FillCircle(x2, y2, thickness / 2, color);
     }
 
     void draw_objects()
@@ -121,7 +119,7 @@ public:
                     break;
                 case DrawType::CIRCLE:
                     color = olc::Pixel(call.second[3], call.second[4], call.second[5]);
-                    FillCircle(olc::vi2d(call.second[0], call.second[1]), call.second[2], color);
+                    FillCircle(olc::vi2d(call.second[0], call.second[1]), call.second[2] / 2, color);
                     break;
                 case DrawType::LINE:
                     color = olc::Pixel(call.second[4], call.second[5], call.second[6]);
@@ -132,11 +130,15 @@ public:
         }
         draw_call_size = draw_calls.size();
 
-        if (GetMouse(0).bHeld)
+
+        if (GetMousePos().y > 0 && GetMousePos().y < 520)
         {
-            pen_drawing();
-            last_mouse_pos = GetMousePos();
+            if (GetMouse(0).bHeld)
+            {
+                pen_drawing(GetMouseX(), GetMouseY(), last_mouse_pos.x, last_mouse_pos.y, pencil_size, pencil_color);
+            }
         }
+        last_mouse_pos = GetMousePos();
 
         EnableLayer(paint_layer, true);
         SetDrawTarget(nullptr);
@@ -153,7 +155,7 @@ public:
 
         scripter.add_keywords(commands);
 
-        gui.add_console("console", "Console", { 0, 520 }, console_size, 30);
+        gui.add_console("console", "ScriptDrawing Console", { 0, 520 }, console_size, 30);
         gui.find_element("console")->scale_text({ 1.75f, 1.75f });
         gui.find_element("console")->add_command_handler([&](std::string& cmd, std::string* return_msg)
             {
