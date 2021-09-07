@@ -35,6 +35,8 @@ public:
 
     olc::Pixel pencil_color{ 0, 0, 0};
     int32_t pencil_size = 2;
+    bool trailing_pencil = false;
+    float trailing_pencil_speed = 1.0f;
 
     bool clear_canvas = false;
     olc::Pixel canvas_color{ 255, 255, 255 };
@@ -47,6 +49,8 @@ public:
         "draw_line(x1_pos, y1_pos, x2_pos, y2_pos, red, gree, blue) - draws a line with given color",
         "set_pencil_color(red, green, blue) - sets the color of the pencil",
         "set_pencil_size(size) - sets the size of the pencil",
+        "set_trailing_pencil(true/false) - sets pencil to trail behind the cursor",
+        "set_trailing_speed(speed) = sets pencil trail speed",
         "clear_canvas() - clears the drawing canvas",
         "clear_console() - clears the console",
         "set_canvas_color() - clears the drawing canvas and changes color",
@@ -65,33 +69,58 @@ public:
         "draw_line",
         "set_pencil_color",
         "set_pencil_size",
+        "set_trailing_pencil",
+        "set_trailing_speed",
         "clear_canvas",
         "clear_console",
         "set_canvas_color",
         "exit"
     };
 
-    olc::vi2d last_mouse_pos = olc::vi2d{ 0, 0 };
+    olc::vf2d cursor_pos = GetMousePos();
+    olc::vf2d pen_pos;
 
     // THANK YOU MEGAREV YET AGAIN!
-    void pen_drawing(int x1, int y1, int x2, int y2, int thickness, const olc::Pixel& color)
+    void pen_drawing()
     {
-        olc::vf2d direction = { (float)(x2 - x1), (float)(y2 - y1) };
-        olc::vf2d axis_proj = direction.perp();
-        float len = axis_proj.mag();
-        if (len > 0.001f) axis_proj /= len;
-        axis_proj *= thickness;
+        if (cursor_pos.y > 0 && cursor_pos.y < 520)
+        {
+            if (GetMouse(0).bPressed)
+                pen_pos = cursor_pos;
+            if (GetMouse(0).bHeld)
+            {
+                //pen_drawing();
+                //pen_drawing(GetMouseX(), GetMouseY(), last_mouse_pos.x, last_mouse_pos.y, pencil_size, pencil_color);
+                if (trailing_pencil)
+                {
+                    for (int n = 0; n < 20; n++)
+                    {
+                        pen_pos += ((cursor_pos - pen_pos) * trailing_pencil_speed) * GetElapsedTime();
+                        FillCircle(pen_pos, pencil_size / 2, pencil_color);
+                    }
+                }
+                else
+                {
+                    int x1 = pen_pos.x, y1 = pen_pos.y, x2 = cursor_pos.x, y2 = cursor_pos.y;
+                    olc::vf2d direction = { (float)(x2 - x1), (float)(y2 - y1) };
+                    olc::vf2d axis_proj = direction.perp();
+                    float len = axis_proj.mag();
+                    if (len > 0.001f) axis_proj /= len;
+                    axis_proj *= pencil_size;
 
-        olc::vi2d t1 = olc::vi2d(x1, y1) + axis_proj / 2;
-        olc::vi2d t2 = t1 - axis_proj;
-        olc::vi2d t3 = olc::vi2d(x2, y2) + axis_proj / 2;
-        olc::vi2d t4 = t3 - axis_proj;
+                    olc::vi2d t1 = olc::vi2d(x1, y1) + axis_proj / 2;
+                    olc::vi2d t2 = t1 - axis_proj;
+                    olc::vi2d t3 = olc::vi2d(x2, y2) + axis_proj / 2;
+                    olc::vi2d t4 = t3 - axis_proj;
 
-        FillTriangle(t1.x, t1.y, t2.x, t2.y, t3.x, t3.y, color);
-        FillTriangle(t2.x, t2.y, t3.x, t3.y, t4.x, t4.y, color);
+                    FillTriangle(t1.x, t1.y, t2.x, t2.y, t3.x, t3.y, pencil_color);
+                    FillTriangle(t2.x, t2.y, t3.x, t3.y, t4.x, t4.y, pencil_color);
 
-        FillCircle(x1, y1, thickness / 2, color);
-        FillCircle(x2, y2, thickness / 2, color);
+                    FillCircle(x1, y1, pencil_size / 2, pencil_color);
+                    FillCircle(x2, y2, pencil_size / 2, pencil_color);
+                }
+            }
+        }
     }
 
     void draw_objects()
@@ -129,11 +158,9 @@ public:
             draw_call_size = draw_calls.size();
         }
 
-
-        if (GetMousePos().y > 0 && GetMousePos().y < 520)
-            if (GetMouse(0).bHeld)
-                pen_drawing(GetMouseX(), GetMouseY(), last_mouse_pos.x, last_mouse_pos.y, pencil_size, pencil_color);
-        last_mouse_pos = GetMousePos();
+        pen_drawing();
+        if (!trailing_pencil)
+            pen_pos = cursor_pos;
 
         EnableLayer(paint_layer, true);
         SetDrawTarget(nullptr);
@@ -186,6 +213,15 @@ public:
                         running = false;
                         *return_msg = "exiting...";
                     }
+                    else if (keyword.first == "set_trailing_pencil")
+                    {
+                        if (keyword.second == "true")
+                            trailing_pencil = true;
+                        else if (keyword.second == "false")
+                            trailing_pencil = false;
+
+                        *return_msg = keyword.first + " executed";
+                    }
                     else
                         did_execute = false;
 
@@ -219,6 +255,11 @@ public:
                             pencil_size = data[0];
                             *return_msg = keyword.first + " executed";
                         }
+                        else if (keyword.first == "set_trailing_speed" && data.size() == 1)
+                        {
+                            trailing_pencil_speed = data[0] * 0.1;
+                            *return_msg = keyword.first + " executed";
+                        }
                         else if (keyword.first == "set_canvas_color" && data.size() == 3)
                         {
                             clear_canvas = true;
@@ -242,6 +283,7 @@ public:
 
     bool OnUserUpdate(float fElapsedTime) override
     {
+        cursor_pos = GetMousePos();
         Clear(olc::BLANK);
 
         if (help_executed && help_iterations <= help_command.size() - 1)
