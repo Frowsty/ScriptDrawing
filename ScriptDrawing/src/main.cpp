@@ -107,7 +107,6 @@ public:
 
         if (draw_call_size != draw_calls.size())
         {
-            std::cout << "drawing\n";
             for (auto& call : draw_calls)
             {
                 olc::Pixel color;
@@ -127,17 +126,13 @@ public:
                     break;
                 }
             }
+            draw_call_size = draw_calls.size();
         }
-        draw_call_size = draw_calls.size();
 
 
         if (GetMousePos().y > 0 && GetMousePos().y < 520)
-        {
             if (GetMouse(0).bHeld)
-            {
                 pen_drawing(GetMouseX(), GetMouseY(), last_mouse_pos.x, last_mouse_pos.y, pencil_size, pencil_color);
-            }
-        }
         last_mouse_pos = GetMousePos();
 
         EnableLayer(paint_layer, true);
