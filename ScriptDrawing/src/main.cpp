@@ -1,5 +1,5 @@
 #define OLC_PGE_APPLICATION
-#define OLC_PGE_FUI
+#define OLC_PGEX_FUI
 #include "headers/olcPixelGameEngine.h"
 #include "headers/olcPGEX_FrostUI.h"
 #include "headers/scripter.h"
