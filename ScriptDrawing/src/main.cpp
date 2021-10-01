@@ -306,7 +306,7 @@ public:
     }
 };
 
-int main()
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
     ConsoleApp* console_app = new ConsoleApp;
 
